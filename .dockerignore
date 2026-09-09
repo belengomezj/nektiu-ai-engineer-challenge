@@ -1,0 +1,13 @@
+.git
+.venv
+tests/
+evals/
+__pycache__
+*.pyc
+*.egg-info
+**/.env*
+frontend/node_modules/
+frontend/.next/
+frontend/.vinext/
+frontend/.wrangler/
+frontend/dist/

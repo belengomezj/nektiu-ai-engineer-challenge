@@ -1,0 +1,27 @@
+[
+  {
+    "question": "¿Cuánto cuesta el plan Starter?",
+    "expected_terms": ["49", "mes"],
+    "expects_sources": true
+  },
+  {
+    "question": "¿Necesito una tarjeta para probar el producto?",
+    "expected_terms": ["no", "tarjeta"],
+    "expects_sources": true
+  },
+  {
+    "question": "¿Cómo se protegen los datos de los clientes?",
+    "expected_terms": ["cifran", "tránsito", "reposo"],
+    "expects_sources": true
+  },
+  {
+    "question": "¿Puede NektiBot enviar correos?",
+    "expected_terms": ["no", "correo"],
+    "expects_sources": true
+  },
+  {
+    "question": "¿Quién ganó el mundial de fútbol de 2010?",
+    "exact_answer": "No lo sé",
+    "expects_sources": false
+  }
+]

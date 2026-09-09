@@ -1,78 +1,82 @@
-"""
-Nektiu AI Engineer Challenge — backend de partida.
-
-Este backend HOY solo reenvía la pregunta al modelo (sin RAG).
-Tu trabajo es convertirlo en un asistente FUNDAMENTADO en el documento
-de `data/sample.md`. Busca los comentarios `TODO` más abajo.
-
-Ejecutar en local:
-    pip install -r requirements.txt
-    export OPENAI_API_KEY=sk-...        # en Windows: set OPENAI_API_KEY=...
-    uvicorn app:app --reload --port 8000
-"""
+"""FastAPI application for the NektiBot document assistant."""
 
 import os
+from functools import lru_cache
 from pathlib import Path
 
-from fastapi import FastAPI
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from openai import OpenAI
+from openai import OpenAIError
+from pydantic import BaseModel, Field, field_validator
 
-app = FastAPI(title="Nektiu AI Engineer Challenge API")
+from api.messages import UNKNOWN_ANSWER, is_unknown_answer
+from api.openai_gateway import create_answer, create_embeddings
+from api.rag import HybridRetriever, split_markdown
 
-# CORS abierto para que tu frontend (local o desplegado) pueda llamar al backend.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+load_dotenv()
 
 DATA_PATH = Path(__file__).parent.parent / "data" / "sample.md"
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+    if origin.strip()
+]
 
-
-def load_document() -> str:
-    """Carga el documento sobre el que responder. Puedes cambiarlo por el tuyo."""
-    return DATA_PATH.read_text(encoding="utf-8")
+app = FastAPI(title="Nektiu AI Engineer Challenge API", version="1.0.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+)
 
 
 class ChatRequest(BaseModel):
-    question: str
+    question: str = Field(min_length=1, max_length=500)
+
+    @field_validator("question")
+    @classmethod
+    def question_must_not_be_blank(cls, value: str) -> str:
+        question = value.strip()
+        if not question:
+            raise ValueError("question must not be blank")
+        return question
 
 
 class ChatResponse(BaseModel):
     answer: str
-    sources: list[str] = []
+    sources: list[str] = Field(default_factory=list)
+
+
+def load_document() -> str:
+    return DATA_PATH.read_text(encoding="utf-8")
+
+
+@lru_cache
+def get_retriever() -> HybridRetriever:
+    return HybridRetriever(split_markdown(load_document()), create_embeddings)
 
 
 @app.get("/api/health")
-def health():
+def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
 @app.post("/api/chat", response_model=ChatResponse)
-def chat(req: ChatRequest):
-    # --------------------------------------------------------------------- #
-    # TODO (parte 1 — RAG): en vez de mandar la pregunta "a pelo", recupera
-    #   los fragmentos relevantes de load_document() (chunking + búsqueda por
-    #   similitud con embeddings, o la técnica que prefieras) y pásalos como
-    #   contexto al modelo.
-    #
-    # TODO (parte 2 — honestidad): si el contexto recuperado no contiene la
-    #   respuesta, la app debe responder "No lo sé" en lugar de inventar.
-    #
-    # TODO (parte 3 — citas): devuelve en `sources` los fragmentos que has
-    #   usado para construir la respuesta.
-    # --------------------------------------------------------------------- #
-    completion = client.chat.completions.create(
-        model=MODEL,
-        messages=[
-            {"role": "system", "content": "Eres un asistente conciso y honesto."},
-            {"role": "user", "content": req.question},
-        ],
-    )
-    return ChatResponse(answer=completion.choices[0].message.content, sources=[])
+def chat(request: ChatRequest) -> ChatResponse:
+    try:
+        results = get_retriever().search(request.question)
+        if not results:
+            return ChatResponse(answer=UNKNOWN_ANSWER)
+
+        sources = [result.chunk.content for result in results]
+        answer = create_answer(request.question, sources).strip()
+        if is_unknown_answer(answer):
+            return ChatResponse(answer=UNKNOWN_ANSWER)
+        return ChatResponse(answer=answer, sources=sources)
+    except (OSError, ValueError) as error:
+        raise HTTPException(status_code=500, detail="Unable to process the document") from error
+    except OpenAIError as error:
+        detail = "Language model provider unavailable"
+        raise HTTPException(status_code=502, detail=detail) from error

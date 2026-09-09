@@ -1,66 +1,133 @@
-# Nektiu — AI Engineer Challenge
+# NektiBot — asistente RAG
 
-Bienvenido/a al reto técnico de **Nektiu** para el puesto de **AI Engineer / Data**.
+Chat documental que responde únicamente desde `data/sample.md`, cita los fragmentos utilizados y
+contesta `No lo sé` cuando no encuentra evidencia suficiente.
 
-No buscamos que resuelvas un examen teórico: queremos verte **construir algo que funcione de punta a punta** y, sobre todo, que **entiendas y sepas defender** lo que has hecho. Puedes (y te animamos a) usar herramientas de desarrollo asistido por IA como Cursor, Copilot o similares — forman parte de nuestro día a día.
+> Enlace público: se añadirá después del despliegue.
 
----
+## Arquitectura
 
-## El reto
+```text
+Pregunta ─┬─ BM25 (términos exactos) ─────┐
+          └─ embeddings + coseno ─────────┴─ ranking híbrido
+                                                   │
+                                      ¿hay evidencia suficiente?
+                                         ├─ no → "No lo sé"
+                                         └─ sí → LLM → respuesta + fuentes
+```
 
-Construye y **despliega** una pequeña aplicación de chat que responda **preguntas sobre un documento** (un asistente RAG sencillo).
+El documento se divide por secciones Markdown. BM25 y los embeddings del corpus se calculan una vez,
+de forma diferida, y permanecen en memoria. Cada pregunta requiere un embedding y solo llama al
+modelo de chat cuando supera el umbral de recuperación.
 
-Te damos un backend mínimo en FastAPI (`/api/app.py`) que hoy solo llama al modelo. Tu trabajo es convertirlo en un asistente **fundamentado en el documento** y ponerle una cara.
+## Ejecución
 
-### Qué tiene que hacer la app
+Requisitos: Python 3.10+, [uv](https://docs.astral.sh/uv/) y Node.js 22+.
 
-1. **Responder a partir del documento** (`data/sample.md`, o uno tuyo): recupera los fragmentos relevantes y construye la respuesta a partir de ellos (RAG).
-2. **Ser honesta:** si el documento no contiene la respuesta, debe decir **"No lo sé"** en lugar de inventar.
-3. **Citar la fuente:** devolver qué fragmento(s) ha usado para responder.
-4. **Tener frontend:** una interfaz de chat simple (puedes _vibe-codearla_ con Cursor) que consuma el backend.
-5. **Estar desplegada:** en Vercel, Render, Hugging Face Spaces o donde prefieras, con un enlace público que funcione.
+### Local
 
-### Bonus (opcional, suma pero no es obligatorio)
+Backend:
 
-- Una mini-evaluación: 3–5 preguntas con su respuesta esperada, mostrando que el sistema acierta (y que dice "No lo sé" cuando toca).
-- Streaming de la respuesta, historial de conversación, o lo que consideres que aporta.
+```bash
+uv sync
+cp api/.env.example .env
+# Añade OPENAI_API_KEY a .env
+uv run uvicorn api.app:app --reload --port 8000
+```
 
----
+Frontend, en otra terminal:
 
-## Cómo empezar
+```bash
+cd frontend
+npm install
+cp .env.example .env.local
+npm run dev
+```
 
-1. **Haz un fork** de este repositorio a tu cuenta de GitHub.
-2. Clónalo y ábrelo en tu editor (Cursor, VS Code…).
-3. Levanta el backend siguiendo [`api/README.md`](api/README.md).
-4. Implementa el RAG y el frontend (ver [`frontend/README.md`](frontend/README.md)).
-5. Despliega y comprueba el enlace público en una ventana de incógnito.
+Abre `http://localhost:3000`. La API expone su healthcheck en
+`http://localhost:8000/api/health` y OpenAPI en `http://localhost:8000/docs`.
 
-> Necesitarás una API key de un proveedor de LLM (por defecto OpenAI). Si tienes cualquier problema de acceso a modelos, escríbenos y lo resolvemos — no queremos que el coste sea una barrera.
+### Docker
 
----
+API y frontend son targets independientes del mismo Dockerfile y Compose los inicia por separado:
 
-## Entrega
+```bash
+cp api/.env.example api/.env
+# Añade OPENAI_API_KEY a api/.env
+docker compose up --build
+```
 
-Sigue las instrucciones de [`docs/SUBMISSION.md`](docs/SUBMISSION.md). En resumen, envíanos:
+Servicios: frontend en `http://localhost:3000` y API en `http://localhost:8000`.
 
-- El enlace a **tu repositorio** (el fork con tu trabajo).
-- El **enlace público** de la app desplegada.
-- Un **README** breve explicando tus decisiones y qué mejorarías con más tiempo.
-- Un vídeo de **5 minutos** (Loom o similar) enseñando la app y el código — **o** dínoslo y lo vemos en directo en la siguiente entrevista.
+## API
 
-**Tiempo estimado:** 3–4 horas. **Plazo:** una semana desde que recibes el reto (si necesitas otra fecha, dínoslo sin problema).
+`POST /api/chat`
 
----
+```json
+{ "question": "¿Cuánto cuesta Starter?" }
+```
 
-## Qué valoramos
+```json
+{
+  "answer": "El plan Starter cuesta 49 € al mes.",
+  "sources": ["Planes y precios\n- **Starter**: 49 €/mes. ..."]
+}
+```
 
-- Que **funcione y esté desplegada** (mejor algo sencillo y sólido que muchas features a medias).
-- **Claridad del razonamiento**: por qué tomaste cada decisión.
-- **Rigor**: que la app sea honesta ("No lo sé"), que cite fuentes, y que hayas pensado cómo comprobar que responde bien.
-- **Criterio con la IA**: usar Cursor/Copilot está perfecto; lo que miramos es que entiendas y sepas **explicar y modificar** el código resultante.
+Sin evidencia devuelve `{"answer": "No lo sé", "sources": []}`.
 
-En la siguiente entrevista te pediremos que nos **expliques tu código** y hagas algún **cambio en vivo**, así que asegúrate de conocer bien lo que entregas.
+## Calidad
 
-¡Mucha suerte! Cualquier duda, estamos a un email de distancia.
+```bash
+uv run ruff check .
+uv run ruff format --check .
+uv run pytest
 
-— Equipo de Nektiu
+cd frontend
+npm run lint
+npx oxfmt --check .
+npm run build
+```
+
+La mini-evaluación contiene cuatro preguntas respondibles y una fuera del documento; los cinco casos
+se han validado con llamadas reales a OpenAI:
+
+```bash
+uv run python evals/run.py
+# Para un despliegue: EVAL_API_URL=https://api.example.com uv run python evals/run.py
+```
+
+## Decisiones técnicas
+
+- **Retrieval híbrido en memoria:** BM25 cubre nombres, precios y términos exactos; los embeddings,
+  paráfrasis. Para siete secciones, una base vectorial añadiría infraestructura sin beneficio real.
+- **Dos barreras contra alucinaciones:** un umbral evita llamar al LLM sin evidencia y el prompt
+  prohíbe utilizar conocimiento externo.
+- **Fuentes literales:** la API devuelve el contexto entregado al modelo y oculta las fuentes cuando
+  la respuesta es `No lo sé`.
+- **OpenAI aislado:** retrieval no depende del SDK, usa embeddings deterministas en tests y crea el
+  cliente real solo cuando hace falta.
+- **Estado local:** el historial vive en el frontend; no hay persistencia ni cuentas de usuario.
+
+## Despliegue y configuración
+
+- Contenedores: `Dockerfile` multi-stage con targets `api` y `frontend`.
+- Backend: Blueprint `render.yaml` para Render.
+- Frontend: configuración de Sites/Cloudflare.
+- Desarrollo conjunto: `compose.yaml`.
+
+| Variable | Servicio | Uso |
+|---|---|---|
+| `OPENAI_API_KEY` | Backend | Credencial privada; nunca se expone al frontend. |
+| `OPENAI_MODEL` | Backend | Modelo de chat. |
+| `OPENAI_EMBEDDING_MODEL` | Backend | Modelo de embeddings. |
+| `CORS_ORIGINS` | Backend | URLs frontend permitidas, separadas por comas. |
+| `NEXT_PUBLIC_API_URL` | Frontend | URL pública de la API. |
+| `NEXT_PUBLIC_SITE_URL` | Frontend | URL usada en metadatos sociales. |
+
+## Próximos pasos
+
+- Calibrar pesos y umbrales con un conjunto de evaluación mayor.
+- Medir latencia y scores de recuperación sin registrar información sensible.
+- Añadir streaming cuando el tamaño de las respuestas lo justifique.
+- Para colecciones grandes o actualizables, usar Qdrant y una base persistente para metadatos.
