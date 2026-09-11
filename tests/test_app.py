@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 import api.app as app_module
+import api.streaming as streaming_module
 from api.rag import Chunk, SearchResult
 
 client = TestClient(app_module.app)
@@ -15,7 +16,10 @@ class FakeRetriever:
 
 
 def test_health() -> None:
-    assert client.get("/api/health").json() == {"status": "ok"}
+    response = client.get("/api/health")
+
+    assert response.json() == {"status": "ok"}
+    assert response.headers["server-timing"].startswith("app;dur=")
 
 
 def test_chat_returns_grounded_answer_and_sources(monkeypatch) -> None:
@@ -122,7 +126,7 @@ def test_stream_returns_tokens_and_final_sources(monkeypatch) -> None:
         app_module, "get_retriever", lambda: FakeRetriever([SearchResult(chunk, 1)])
     )
     monkeypatch.setattr(
-        app_module, "create_answer_stream", lambda *args: iter(["Cuesta ", "49 €."])
+        streaming_module, "create_answer_stream", lambda *args: iter(["Cuesta ", "49 €."])
     )
 
     response = client.post("/api/chat/stream", json={"question": "¿Cuánto cuesta?"})
@@ -138,7 +142,7 @@ def test_stream_normalizes_unknown_and_hides_sources(monkeypatch) -> None:
     monkeypatch.setattr(
         app_module, "get_retriever", lambda: FakeRetriever([SearchResult(chunk, 1)])
     )
-    monkeypatch.setattr(app_module, "create_answer_stream", lambda *args: iter(["No lo sé."]))
+    monkeypatch.setattr(streaming_module, "create_answer_stream", lambda *args: iter(["No lo sé."]))
 
     response = client.post("/api/chat/stream", json={"question": "¿Incluye llamadas?"})
 

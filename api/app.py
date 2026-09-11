@@ -1,7 +1,7 @@
 """FastAPI application for the NektiBot document assistant."""
 
-import json
 import os
+import time
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -9,13 +9,14 @@ from typing import Literal
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 from openai import OpenAIError
 from pydantic import BaseModel, Field, field_validator
 
 from api.messages import UNKNOWN_ANSWER, is_unknown_answer
-from api.openai_gateway import create_answer, create_answer_stream, create_embeddings
+from api.openai_gateway import create_answer, create_embeddings
 from api.rag import HybridRetriever, split_markdown
+from api.streaming import stream_response
+from api.timing import elapsed_ms, log_duration, measure
 
 load_dotenv()
 
@@ -33,6 +34,17 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
 )
+
+
+@app.middleware("http")
+async def add_server_timing(request, call_next):
+    """Expose total server time and log it without recording user content."""
+    started = time.perf_counter()
+    response = await call_next(request)
+    duration = elapsed_ms(started)
+    response.headers["Server-Timing"] = f"app;dur={duration}"
+    log_duration("http", duration)
+    return response
 
 
 class HistoryMessage(BaseModel):
@@ -85,12 +97,14 @@ def health() -> dict[str, str]:
 @app.post("/api/chat", response_model=ChatResponse)
 def chat(request: ChatRequest) -> ChatResponse:
     try:
-        results = get_retriever().search(retrieval_question(request))
+        with measure("retrieval"):
+            results = get_retriever().search(retrieval_question(request))
         if not results:
             return ChatResponse(answer=UNKNOWN_ANSWER)
 
         sources = [result.chunk.content for result in results]
-        answer = create_answer(request.question, sources, history_payload(request)).strip()
+        with measure("generation"):
+            answer = create_answer(request.question, sources, history_payload(request)).strip()
         if is_unknown_answer(answer):
             return ChatResponse(answer=UNKNOWN_ANSWER)
         return ChatResponse(answer=answer, sources=sources)
@@ -101,15 +115,12 @@ def chat(request: ChatRequest) -> ChatResponse:
         raise HTTPException(status_code=502, detail=detail) from error
 
 
-def sse(event: str, data: dict) -> str:
-    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
-
-
 @app.post("/api/chat/stream")
-def chat_stream(request: ChatRequest) -> StreamingResponse:
+def chat_stream(request: ChatRequest):
     """Stream model fragments and finish with the canonical answer and sources."""
     try:
-        results = get_retriever().search(retrieval_question(request))
+        with measure("retrieval"):
+            results = get_retriever().search(retrieval_question(request))
     except (OSError, ValueError) as error:
         raise HTTPException(status_code=500, detail="Unable to process the document") from error
     except OpenAIError as error:
@@ -118,25 +129,4 @@ def chat_stream(request: ChatRequest) -> StreamingResponse:
         ) from error
 
     sources = [result.chunk.content for result in results]
-
-    def events():
-        if not results:
-            yield sse("done", {"answer": UNKNOWN_ANSWER, "sources": []})
-            return
-
-        fragments = []
-        try:
-            for text in create_answer_stream(request.question, sources, history_payload(request)):
-                fragments.append(text)
-                yield sse("token", {"text": text})
-        except OpenAIError:
-            yield sse("error", {"message": "Language model provider unavailable"})
-            return
-
-        answer = "".join(fragments).strip()
-        response_sources = sources
-        if is_unknown_answer(answer):
-            answer, response_sources = UNKNOWN_ANSWER, []
-        yield sse("done", {"answer": answer, "sources": response_sources})
-
-    return StreamingResponse(events(), media_type="text/event-stream")
+    return stream_response(request.question, history_payload(request), sources)

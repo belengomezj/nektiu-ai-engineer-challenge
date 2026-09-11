@@ -16,6 +16,7 @@ build/
 # Vercel
 .vercel
 
+
 # SO / editor
 .DS_Store
 .idea/

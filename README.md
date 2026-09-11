@@ -83,6 +83,9 @@ Servicios: frontend en `http://localhost:3000` y API en `http://localhost:8000`.
 Sin evidencia devuelve `{"answer": "No lo sé", "sources": []}`.
 
 `POST /api/chat/stream` acepta el mismo cuerpo y emite eventos SSE `token`, `done` o `error`.
+Todas las respuestas incluyen `Server-Timing`; el backend registra la latencia de retrieval,
+generación y preparación HTTP sin guardar preguntas ni documentos. En streaming, la generación
+completa se mide aparte como `generation.stream`.
 
 ## Calidad
 
@@ -96,6 +99,9 @@ npm run lint
 npx oxfmt --check .
 npm run build
 ```
+
+GitHub Actions repite automáticamente Ruff, formato y los tests de backend en cada push y pull
+request. Ragas queda fuera del CI porque consume red y llamadas al modelo.
 
 La mini-evaluación contiene cuatro preguntas respondibles y una fuera del documento; los cinco casos
 se han validado con llamadas reales a OpenAI:
@@ -145,6 +151,6 @@ uv run --with 'ragas>=0.4,<0.5' --with 'langchain-community>=0.3,<0.4' \
 ## Próximos pasos
 
 - Calibrar pesos y umbrales con un conjunto de evaluación mayor.
-- Medir latencia y scores de recuperación sin registrar información sensible.
 - Evaluar si el historial necesita persistencia en servidor cuando existan usuarios.
+- Añadir rate limiting si la API se expone públicamente o aumenta el tráfico.
 - Para colecciones grandes o actualizables, usar Qdrant y una base persistente para metadatos.
