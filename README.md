@@ -64,7 +64,13 @@ Servicios: frontend en `http://localhost:3000` y API en `http://localhost:8000`.
 `POST /api/chat`
 
 ```json
-{ "question": "¿Cuánto cuesta Starter?" }
+{
+  "question": "¿Y el plan Business?",
+  "history": [
+    { "role": "user", "content": "¿Cuánto cuesta Starter?" },
+    { "role": "assistant", "content": "Cuesta 49 € al mes." }
+  ]
+}
 ```
 
 ```json
@@ -75,6 +81,8 @@ Servicios: frontend en `http://localhost:3000` y API en `http://localhost:8000`.
 ```
 
 Sin evidencia devuelve `{"answer": "No lo sé", "sources": []}`.
+
+`POST /api/chat/stream` acepta el mismo cuerpo y emite eventos SSE `token`, `done` o `error`.
 
 ## Calidad
 
@@ -115,7 +123,8 @@ uv run --with 'ragas>=0.4,<0.5' --with 'langchain-community>=0.3,<0.4' \
   la respuesta es `No lo sé`.
 - **OpenAI aislado:** retrieval no depende del SDK, usa embeddings deterministas en tests y crea el
   cliente real solo cuando hace falta.
-- **Estado local:** el historial vive en el frontend; no hay persistencia ni cuentas de usuario.
+- **Estado local:** el navegador conserva hasta 40 mensajes y envía los 6 últimos como contexto;
+  el backend no guarda conversaciones ni usuarios.
 
 ## Despliegue y configuración
 
@@ -137,5 +146,5 @@ uv run --with 'ragas>=0.4,<0.5' --with 'langchain-community>=0.3,<0.4' \
 
 - Calibrar pesos y umbrales con un conjunto de evaluación mayor.
 - Medir latencia y scores de recuperación sin registrar información sensible.
-- Añadir streaming cuando el tamaño de las respuestas lo justifique.
+- Evaluar si el historial necesita persistencia en servidor cuando existan usuarios.
 - Para colecciones grandes o actualizables, usar Qdrant y una base persistente para metadatos.

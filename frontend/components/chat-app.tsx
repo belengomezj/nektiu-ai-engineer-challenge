@@ -12,6 +12,7 @@ import {
   BookOpenText,
   ChevronDown,
   CircleCheck,
+  RotateCcw,
   Send,
   Sparkles,
 } from 'lucide-react';
@@ -24,17 +25,17 @@ import {
 } from '@/components/ui/collapsible';
 import { Textarea } from '@/components/ui/textarea';
 import { useChatTool } from '@/hooks/use-chat-tool';
+import {
+  type ChatHistory,
+  type ChatResponse,
+  streamChat,
+} from '@/lib/chat-stream';
 
 type Message = {
   id: string;
   role: 'assistant' | 'user';
   text: string;
   sources?: string[];
-};
-
-type ChatResponse = {
-  answer: string;
-  sources: string[];
 };
 
 const API_URL = (
@@ -53,12 +54,57 @@ const INITIAL_MESSAGE: Message = {
   text: 'Hola, soy NektiBot. Pregúntame sobre planes, integraciones, privacidad o cualquier dato del manual de producto.',
 };
 
+const STORAGE_KEY = 'nektibot-history';
+
+function isMessage(value: unknown): value is Message {
+  if (!value || typeof value !== 'object') return false;
+  const message = value as Partial<Message>;
+  return (
+    typeof message.id === 'string' &&
+    typeof message.text === 'string' &&
+    (message.role === 'assistant' || message.role === 'user')
+  );
+}
+
 export function ChatApp() {
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [question, setQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      try {
+        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
+        if (Array.isArray(stored)) {
+          setMessages([
+            INITIAL_MESSAGE,
+            ...stored.filter(isMessage).slice(-40),
+          ]);
+        }
+      } catch {
+        localStorage.removeItem(STORAGE_KEY);
+      } finally {
+        setHistoryLoaded(true);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (historyLoaded && !isLoading) {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(messages.slice(1).slice(-40)),
+      );
+    }
+  }, [historyLoaded, isLoading, messages]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -73,30 +119,45 @@ export function ChatApp() {
       setQuestion('');
       setError(null);
       setIsLoading(true);
+      const history: ChatHistory[] = messages
+        .slice(1)
+        .slice(-6)
+        .map((message) => ({ role: message.role, content: message.text }));
       setMessages((current) => [
         ...current,
         { id: crypto.randomUUID(), role: 'user', text: nextQuestion },
       ]);
 
       try {
-        const response = await fetch(`${API_URL}/api/chat`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question: nextQuestion }),
-        });
-        if (!response.ok)
-          throw new Error(`Request failed with ${response.status}`);
-
-        const data = (await response.json()) as ChatResponse;
-        setMessages((current) => [
-          ...current,
-          {
-            id: crypto.randomUUID(),
-            role: 'assistant',
+        const responseId = crypto.randomUUID();
+        const data = await streamChat(API_URL, nextQuestion, history, (text) =>
+          setMessages((current) => {
+            const existing = current.some(
+              (message) => message.id === responseId,
+            );
+            if (!existing) {
+              return [...current, { id: responseId, role: 'assistant', text }];
+            }
+            return current.map((message) =>
+              message.id === responseId
+                ? { ...message, text: message.text + text }
+                : message,
+            );
+          }),
+        );
+        setMessages((current) => {
+          const complete = {
+            id: responseId,
+            role: 'assistant' as const,
             text: data.answer,
             sources: data.sources,
-          },
-        ]);
+          };
+          return current.some((message) => message.id === responseId)
+            ? current.map((message) =>
+                message.id === responseId ? complete : message,
+              )
+            : [...current, complete];
+        });
         return data;
       } catch (requestError) {
         setError(
@@ -108,7 +169,7 @@ export function ChatApp() {
         setIsLoading(false);
       }
     },
-    [isLoading],
+    [isLoading, messages],
   );
 
   useChatTool(ask);
@@ -123,6 +184,12 @@ export function ChatApp() {
       event.preventDefault();
       void ask(question).catch(() => undefined);
     }
+  }
+
+  function clearHistory() {
+    localStorage.removeItem(STORAGE_KEY);
+    setMessages([INITIAL_MESSAGE]);
+    setError(null);
   }
 
   return (
@@ -168,9 +235,22 @@ export function ChatApp() {
             <p className="eyebrow">Manual de producto</p>
             <h2>Pregunta lo que necesites</h2>
           </div>
-          <span className="online-label">
-            <span /> Disponible
-          </span>
+          <div className="header-actions">
+            {messages.length > 1 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={isLoading}
+                onClick={clearHistory}
+              >
+                <RotateCcw size={14} /> Limpiar
+              </Button>
+            ) : null}
+            <span className="online-label">
+              <span /> Disponible
+            </span>
+          </div>
         </header>
 
         <div className="messages" aria-live="polite">

@@ -195,6 +195,12 @@ h1 {
   margin-bottom: 0.25rem;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .online-label {
   display: flex;
   align-items: center;

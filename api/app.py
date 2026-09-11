@@ -1,17 +1,20 @@
 """FastAPI application for the NektiBot document assistant."""
 
+import json
 import os
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from openai import OpenAIError
 from pydantic import BaseModel, Field, field_validator
 
 from api.messages import UNKNOWN_ANSWER, is_unknown_answer
-from api.openai_gateway import create_answer, create_embeddings
+from api.openai_gateway import create_answer, create_answer_stream, create_embeddings
 from api.rag import HybridRetriever, split_markdown
 
 load_dotenv()
@@ -32,8 +35,14 @@ app.add_middleware(
 )
 
 
+class HistoryMessage(BaseModel):
+    role: Literal["assistant", "user"]
+    content: str = Field(min_length=1, max_length=500)
+
+
 class ChatRequest(BaseModel):
     question: str = Field(min_length=1, max_length=500)
+    history: list[HistoryMessage] = Field(default_factory=list, max_length=6)
 
     @field_validator("question")
     @classmethod
@@ -58,6 +67,16 @@ def get_retriever() -> HybridRetriever:
     return HybridRetriever(split_markdown(load_document()), create_embeddings)
 
 
+def history_payload(request: ChatRequest) -> list[dict]:
+    return [message.model_dump() for message in request.history]
+
+
+def retrieval_question(request: ChatRequest) -> str:
+    """Give short follow-ups the vocabulary from recent user questions."""
+    previous = [message.content for message in request.history if message.role == "user"][-2:]
+    return " ".join([*previous, request.question])
+
+
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -66,12 +85,12 @@ def health() -> dict[str, str]:
 @app.post("/api/chat", response_model=ChatResponse)
 def chat(request: ChatRequest) -> ChatResponse:
     try:
-        results = get_retriever().search(request.question)
+        results = get_retriever().search(retrieval_question(request))
         if not results:
             return ChatResponse(answer=UNKNOWN_ANSWER)
 
         sources = [result.chunk.content for result in results]
-        answer = create_answer(request.question, sources).strip()
+        answer = create_answer(request.question, sources, history_payload(request)).strip()
         if is_unknown_answer(answer):
             return ChatResponse(answer=UNKNOWN_ANSWER)
         return ChatResponse(answer=answer, sources=sources)
@@ -80,3 +99,44 @@ def chat(request: ChatRequest) -> ChatResponse:
     except OpenAIError as error:
         detail = "Language model provider unavailable"
         raise HTTPException(status_code=502, detail=detail) from error
+
+
+def sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+@app.post("/api/chat/stream")
+def chat_stream(request: ChatRequest) -> StreamingResponse:
+    """Stream model fragments and finish with the canonical answer and sources."""
+    try:
+        results = get_retriever().search(retrieval_question(request))
+    except (OSError, ValueError) as error:
+        raise HTTPException(status_code=500, detail="Unable to process the document") from error
+    except OpenAIError as error:
+        raise HTTPException(
+            status_code=502, detail="Language model provider unavailable"
+        ) from error
+
+    sources = [result.chunk.content for result in results]
+
+    def events():
+        if not results:
+            yield sse("done", {"answer": UNKNOWN_ANSWER, "sources": []})
+            return
+
+        fragments = []
+        try:
+            for text in create_answer_stream(request.question, sources, history_payload(request)):
+                fragments.append(text)
+                yield sse("token", {"text": text})
+        except OpenAIError:
+            yield sse("error", {"message": "Language model provider unavailable"})
+            return
+
+        answer = "".join(fragments).strip()
+        response_sources = sources
+        if is_unknown_answer(answer):
+            answer, response_sources = UNKNOWN_ANSWER, []
+        yield sse("done", {"answer": answer, "sources": response_sources})
+
+    return StreamingResponse(events(), media_type="text/event-stream")
