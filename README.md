@@ -97,6 +97,14 @@ uv run python evals/run.py
 # Para un despliegue: EVAL_API_URL=https://api.example.com uv run python evals/run.py
 ```
 
+Opcionalmente, Ragas evalúa fidelidad, relevancia y calidad del contexto sobre los cuatro casos
+respondibles. Ejecuta el pipeline directamente y realiza llamadas adicionales a OpenAI:
+
+```bash
+uv run --with 'ragas>=0.4,<0.5' --with 'langchain-community>=0.3,<0.4' \
+  python evals/ragas_eval.py
+```
+
 ## Decisiones técnicas
 
 - **Retrieval híbrido en memoria:** BM25 cubre nombres, precios y términos exactos; los embeddings,

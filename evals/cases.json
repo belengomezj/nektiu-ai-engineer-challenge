@@ -1,27 +1,42 @@
 [
   {
     "question": "¿Cuánto cuesta el plan Starter?",
+    "reference": "El plan Starter cuesta 49 € al mes.",
+    "expected_source": "Planes y precios",
     "expected_terms": ["49", "mes"],
-    "expects_sources": true
+    "expects_sources": true,
+    "should_abstain": false
   },
   {
     "question": "¿Necesito una tarjeta para probar el producto?",
+    "reference": "No se requiere tarjeta para los 14 días de prueba gratuita.",
+    "expected_source": "Planes y precios",
     "expected_terms": ["no", "tarjeta"],
-    "expects_sources": true
+    "expects_sources": true,
+    "should_abstain": false
   },
   {
     "question": "¿Cómo se protegen los datos de los clientes?",
+    "reference": "Los datos de los clientes se cifran en tránsito y en reposo.",
+    "expected_source": "Privacidad y datos",
     "expected_terms": ["cifran", "tránsito", "reposo"],
-    "expects_sources": true
+    "expects_sources": true,
+    "should_abstain": false
   },
   {
     "question": "¿Puede NektiBot enviar correos?",
+    "reference": "No. NektiBot no realiza acciones ni envía correos.",
+    "expected_source": "Límites conocidos",
     "expected_terms": ["no", "correo"],
-    "expects_sources": true
+    "expects_sources": true,
+    "should_abstain": false
   },
   {
     "question": "¿Quién ganó el mundial de fútbol de 2010?",
+    "reference": "No lo sé",
+    "expected_source": null,
     "exact_answer": "No lo sé",
-    "expects_sources": false
+    "expects_sources": false,
+    "should_abstain": true
   }
 ]

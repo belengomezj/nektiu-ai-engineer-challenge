@@ -35,7 +35,11 @@ def case_passes(case: dict, response: dict) -> bool:
     terms_match = all(normalize(term) in answer for term in case.get("expected_terms", []))
     answer_matches = normalize(exact) == answer if exact else terms_match
     sources_match = bool(response["sources"]) is case["expects_sources"]
-    return answer_matches and sources_match
+    expected_source = case.get("expected_source")
+    source_hit = not expected_source or any(
+        normalize(expected_source) in normalize(source) for source in response["sources"]
+    )
+    return answer_matches and sources_match and source_hit
 
 
 def main() -> int:
