@@ -49,24 +49,6 @@ docker compose up --build
 - Frontend: `http://localhost:3000`
 - API: `http://localhost:8000`
 
-### Despliegue en Render
-
-[`render.yaml`](render.yaml) crea dos servicios públicos e independientes:
-
-| Servicio | Runtime | URL |
-|---|---|---|
-| `nektibot-web` | Node | https://nektibot-web.onrender.com/ |
-| `nektibot-api` | Docker/FastAPI | https://nektibot-api.onrender.com/ |
-
-1. Crea un Blueprint de Render desde este repositorio y la rama `main`.
-2. Introduce `OPENAI_API_KEY` como secreto y pulsa **Deploy Blueprint**.
-3. Render conecta automáticamente la URL de la API con el frontend y configura CORS con el origen
-   real del frontend.
-
-Los dos servicios usan el plan gratuito. Es suficiente para esta prueba, pero los servicios web se
-duermen tras un periodo sin tráfico, pueden tardar alrededor de un minuto en arrancar y comparten
-las horas gratuitas del workspace. El uso de la API de OpenAI se factura por separado.
-
 ### Comprobaciones
 
 ```bash
@@ -92,8 +74,8 @@ npm run build
 | Dos servicios en Render | Mantiene esa separación también en producción y evita exponer la clave de OpenAI en el navegador. |
 | CI con Ruff, formato y pytest | Cubre las comprobaciones esenciales. |
 | Ragas como herramienta opcional | La evaluación usa red y modelos, por lo que no forma parte de la aplicación ni del CI. |
-
-No se utiliza un framework de agentes: descarto una capa de orquestación por el tamaño de la tarea.
+| Despliegue en Render | `render.yaml` crea dos servicios públicos e independientes para web y API. |
+| No se utiliza un framework de agentes | Descarto una capa de orquestación por el tamaño de la tarea. |
 
 ### Arquitectura
 
