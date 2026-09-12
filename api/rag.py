@@ -14,6 +14,12 @@ import numpy as np
 EmbeddingFunction = Callable[[list[str]], list[list[float]]]
 
 TOKEN_PATTERN = re.compile(r"[a-z0-9@.€]+")
+THOUSANDS_SEPARATOR = re.compile(r"(?<=\d)\.(?=\d{3}(?:\D|$))")
+DEFAULT_LEXICAL_WEIGHT = 0.15
+DEFAULT_BM25_THRESHOLD = 1.1
+DEFAULT_SEMANTIC_THRESHOLD = 0.4
+DEFAULT_RESULT_RATIO = 0.75
+DEFAULT_RESULT_LIMIT = 2
 STOP_WORDS = {
     "a",
     "al",
@@ -85,6 +91,7 @@ def tokenize(text: str) -> list[str]:
     """Normalize Spanish text into useful retrieval terms."""
     normalized = unicodedata.normalize("NFKD", text.lower())
     ascii_text = "".join(char for char in normalized if not unicodedata.combining(char))
+    ascii_text = THOUSANDS_SEPARATOR.sub("", ascii_text)
     return [token for token in TOKEN_PATTERN.findall(ascii_text) if token not in STOP_WORDS]
 
 
@@ -128,26 +135,51 @@ class BM25Index:
 class HybridRetriever:
     """Combine lexical BM25 and semantic cosine similarity."""
 
-    def __init__(self, chunks: list[Chunk], embed: EmbeddingFunction) -> None:
+    def __init__(
+        self,
+        chunks: list[Chunk],
+        embed: EmbeddingFunction,
+        lexical_weight: float = DEFAULT_LEXICAL_WEIGHT,
+        bm25_threshold: float = DEFAULT_BM25_THRESHOLD,
+        semantic_threshold: float = DEFAULT_SEMANTIC_THRESHOLD,
+        result_ratio: float = DEFAULT_RESULT_RATIO,
+        result_limit: int = DEFAULT_RESULT_LIMIT,
+    ) -> None:
         if not chunks:
             raise ValueError("At least one document chunk is required")
+        if not 0 <= lexical_weight <= 1:
+            raise ValueError("lexical_weight must be between 0 and 1")
+        if not 0 < result_ratio <= 1:
+            raise ValueError("result_ratio must be between 0 and 1")
+        if result_limit < 1:
+            raise ValueError("result_limit must be positive")
         self.chunks = chunks
         self.embed = embed
+        self.lexical_weight = lexical_weight
+        self.bm25_threshold = bm25_threshold
+        self.semantic_threshold = semantic_threshold
+        self.result_ratio = result_ratio
+        self.result_limit = result_limit
         self.bm25 = BM25Index([chunk.content for chunk in chunks])
         self.embeddings = _normalize_rows(np.asarray(embed([chunk.content for chunk in chunks])))
 
-    def search(self, question: str, limit: int = 2) -> list[SearchResult]:
+    def search(self, question: str, limit: int | None = None) -> list[SearchResult]:
         lexical = self.bm25.scores(question)
         query_embedding = _normalize_rows(np.asarray(self.embed([question])))[0]
         semantic = self.embeddings @ query_embedding
 
-        if lexical.max(initial=0) < 0.8 and semantic.max(initial=0) < 0.35:
+        if (
+            lexical.max(initial=0) < self.bm25_threshold
+            and semantic.max(initial=0) < self.semantic_threshold
+        ):
             return []
 
-        hybrid = 0.45 * _relative(lexical) + 0.55 * _relative(semantic)
-        minimum_score = max(0.25, float(hybrid.max()) * 0.75)
+        hybrid = self.lexical_weight * _relative(lexical) + (1 - self.lexical_weight) * _relative(
+            semantic
+        )
+        minimum_score = max(0.25, float(hybrid.max()) * self.result_ratio)
         indices = [index for index in np.argsort(hybrid)[::-1] if hybrid[index] >= minimum_score]
-        indices = indices[:limit]
+        indices = indices[: limit or self.result_limit]
         return [SearchResult(self.chunks[index], float(hybrid[index])) for index in indices]
 
 

@@ -1,30 +1,16 @@
 # NektiBot — asistente RAG
 
-Chat documental que responde únicamente desde `data/sample.md`, cita los fragmentos utilizados y
-contesta `No lo sé` cuando no encuentra evidencia suficiente.
+**Aplicación:** https://nektibot-rag.srainvisible.chatgpt.site
 
-> Enlace público: se añadirá después del despliegue.
+## Instalación
 
-## Arquitectura
+### Requisitos
 
-```text
-Pregunta ─┬─ BM25 (términos exactos) ─────┐
-          └─ embeddings + coseno ─────────┴─ ranking híbrido
-                                                   │
-                                      ¿hay evidencia suficiente?
-                                         ├─ no → "No lo sé"
-                                         └─ sí → LLM → respuesta + fuentes
-```
+- Python 3.10+
+- [uv](https://docs.astral.sh/uv/)
+- Node.js 22+
 
-El documento se divide por secciones Markdown. BM25 y los embeddings del corpus se calculan una vez,
-de forma diferida, y permanecen en memoria. Cada pregunta requiere un embedding y solo llama al
-modelo de chat cuando supera el umbral de recuperación.
-
-## Ejecución
-
-Requisitos: Python 3.10+, [uv](https://docs.astral.sh/uv/) y Node.js 22+.
-
-### Local
+### Ejecución local
 
 Backend:
 
@@ -35,6 +21,10 @@ cp api/.env.example .env
 uv run uvicorn api.app:app --reload --port 8000
 ```
 
+- API: `http://localhost:8000`
+- Health check: `http://localhost:8000/api/health`
+- OpenAPI: `http://localhost:8000/docs`
+
 Frontend, en otra terminal:
 
 ```bash
@@ -44,12 +34,11 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Abre `http://localhost:3000`. La API expone su healthcheck en
-`http://localhost:8000/api/health` y OpenAPI en `http://localhost:8000/docs`.
+Abre `http://localhost:3000`.
 
 ### Docker
 
-API y frontend son targets independientes del mismo Dockerfile y Compose los inicia por separado:
+También se puede levantar todo el proyecto con Docker Compose:
 
 ```bash
 cp api/.env.example api/.env
@@ -57,37 +46,10 @@ cp api/.env.example api/.env
 docker compose up --build
 ```
 
-Servicios: frontend en `http://localhost:3000` y API en `http://localhost:8000`.
+- Frontend: `http://localhost:3000`
+- API: `http://localhost:8000`
 
-## API
-
-`POST /api/chat`
-
-```json
-{
-  "question": "¿Y el plan Business?",
-  "history": [
-    { "role": "user", "content": "¿Cuánto cuesta Starter?" },
-    { "role": "assistant", "content": "Cuesta 49 € al mes." }
-  ]
-}
-```
-
-```json
-{
-  "answer": "El plan Starter cuesta 49 € al mes.",
-  "sources": ["Planes y precios\n- **Starter**: 49 €/mes. ..."]
-}
-```
-
-Sin evidencia devuelve `{"answer": "No lo sé", "sources": []}`.
-
-`POST /api/chat/stream` acepta el mismo cuerpo y emite eventos SSE `token`, `done` o `error`.
-Todas las respuestas incluyen `Server-Timing`; el backend registra la latencia de retrieval,
-generación y preparación HTTP sin guardar preguntas ni documentos. En streaming, la generación
-completa se mide aparte como `generation.stream`.
-
-## Calidad
+### Comprobaciones
 
 ```bash
 uv run ruff check .
@@ -100,57 +62,110 @@ npx oxfmt --check .
 npm run build
 ```
 
-GitHub Actions repite automáticamente Ruff, formato y los tests de backend en cada push y pull
-request. Ragas queda fuera del CI porque consume red y llamadas al modelo.
+## Decisiones
 
-La mini-evaluación contiene cuatro preguntas respondibles y una fuera del documento; los cinco casos
-se han validado con llamadas reales a OpenAI:
+### Repositorio
+
+| Decisión | Motivo |
+|---|---|
+| `uv`, `pyproject.toml` y `uv.lock` | Instalación reproducible y una única definición de dependencias. |
+| Backend y frontend separados | Cada servicio puede desarrollarse y desplegarse de forma independiente. |
+| Un Dockerfile multi-stage | Evita duplicar configuración y genera imágenes específicas para cada servicio. |
+| CI con Ruff, formato y pytest | Cubre las comprobaciones esenciales. |
+| Ragas como herramienta opcional | La evaluación usa red y modelos, por lo que no forma parte de la aplicación ni del CI. |
+
+No se utiliza un framework de agentes: descarto una capa de orquestación por el tamaño de la tarea.
+
+### Arquitectura
+
+| Componente | Implementación |
+|---|---|
+| Interfaz | Next/Vinext, historial local y diseño minimalista. |
+| API | FastAPI con endpoints JSON, streaming SSE y validación Pydantic. |
+| Estado | El backend no almacena usuarios ni conversaciones. El navegador conserva hasta 40 mensajes y envía los 6 últimos. |
+| Inicialización | El retriever se construye al recibir el primer health check o la primera consulta y queda en memoria. |
+| Disponibilidad | `/api/health` devuelve `200` si el índice está preparado y `503` si no puede construirse. |
+| Operación | `Server-Timing` y logs de latencia para HTTP, retrieval y generación, sin registrar preguntas. |
+| Contenedores | API y frontend se ejecutan como servicios independientes. |
+
+La API expone `POST /api/chat` y `POST /api/chat/stream`. Ambos aceptan una pregunta y un historial
+breve; la variante streaming entrega eventos SSE `token`, `done` y `error`.
+
+### RAG
+
+Se utilizan los modelos sugeridos en `api/.env.example`.
+
+| Etapa | Modelo | Uso |
+|---|---|---|
+| Embeddings del documento | `text-embedding-3-small` | Una llamada por lotes al construir el índice. |
+| Embedding de la pregunta | `text-embedding-3-small` | Una llamada en cada consulta. |
+| Generación de la respuesta | `gpt-4.1-mini` | Solo cuando el retrieval encuentra evidencia. |
+| Evaluación Ragas | `gpt-4.1-mini` y `text-embedding-3-small` | Ejecución manual, fuera de la aplicación. |
+
+**Flujo:** documento → secciones Markdown → búsqueda BM25 y semántica → ranking ponderado →
+filtro de evidencia → modelo → respuesta con fuentes.
+
+- Cada encabezado `##` forma un fragmento con significado y un título útil para citar.
+- BM25 recupera coincidencias literales; los embeddings cubren preguntas formuladas con otras
+  palabras.
+- Las dos señales se normalizan y combinan mediante pesos calibrados.
+- Si ninguna señal alcanza sus umbrales, la API devuelve `No lo sé` sin llamar al modelo de chat.
+- El prompt usa el historial breve para interpretar la conversación, limita los hechos al contexto
+  recuperado y hace que el modelo identifique los fragmentos realmente usados.
+- Las variantes `No lo sé` y `No lo sé.` se normalizan y nunca muestran fuentes.
+- Los embeddings del documento se calculan una vez; cada consulta solo vectoriza la pregunta.
+
+La evaluación funcional contiene 25 escenarios propios: 20 respondibles y 5 fuera del documento.
+La última ejecución real obtuvo `23/25`; los dos fallos fueron abstenciones conservadoras.
+
+La calibración explora 512 combinaciones reutilizando un único lote de embeddings:
+
+La configuración base se eligió al azar como punto de partida, sin apoyarse en resultados de
+evaluación:
+
+| Parámetro | Base | Configuración elegida |
+|---|---:|---:|
+| Peso BM25 | `0.45` | **`0.15`** |
+| Peso semántico | `0.55` | **`0.85`** |
+| Umbral BM25 | `0.8` | **`1.1`** |
+| Umbral de similitud semántica | `0.35` | **`0.40`** |
+
+| Métrica de retrieval | Base | Configuración elegida |
+|---|---:|---:|
+| Puntuación equilibrada | 0,73 | **0,85** |
+| Recall de la sección esperada | 0,85 | **0,90** |
+| Abstención correcta | 0,60 | **0,80** |
+
+El resultado completo está en `evals/calibration_result.json`.
+
+Ragas se ejecuta sobre los nueve casos respondibles del subconjunto de validación:
+
+| Métrica Ragas | Base | Actual |
+|---|---:|---:|
+| Fidelidad | 0,75 | **0,84** |
+| Relevancia de la respuesta | 0,40 | **0,46** |
+| Precisión del contexto | 0,78 | **0,83** |
+| Recall del contexto | 0,74 | **0,85** |
 
 ```bash
 uv run python evals/run.py
-# Para un despliegue: EVAL_API_URL=https://api.example.com uv run python evals/run.py
-```
-
-Opcionalmente, Ragas evalúa fidelidad, relevancia y calidad del contexto sobre los cuatro casos
-respondibles. Ejecuta el pipeline directamente y realiza llamadas adicionales a OpenAI:
-
-```bash
+uv run python evals/calibrate.py
 uv run --with 'ragas>=0.4,<0.5' --with 'langchain-community>=0.3,<0.4' \
   python evals/ragas_eval.py
 ```
 
-## Decisiones técnicas
+## Mejoras
 
-- **Retrieval híbrido en memoria:** BM25 cubre nombres, precios y términos exactos; los embeddings,
-  paráfrasis. Para siete secciones, una base vectorial añadiría infraestructura sin beneficio real.
-- **Dos barreras contra alucinaciones:** un umbral evita llamar al LLM sin evidencia y el prompt
-  prohíbe utilizar conocimiento externo.
-- **Fuentes literales:** la API devuelve el contexto entregado al modelo y oculta las fuentes cuando
-  la respuesta es `No lo sé`.
-- **OpenAI aislado:** retrieval no depende del SDK, usa embeddings deterministas en tests y crea el
-  cliente real solo cuando hace falta.
-- **Estado local:** el navegador conserva hasta 40 mensajes y envía los 6 últimos como contexto;
-  el backend no guarda conversaciones ni usuarios.
+Estas mejoras no son necesarias para el alcance actual, pero tendrían sentido si el proyecto creciera:
 
-## Despliegue y configuración
-
-- Contenedores: `Dockerfile` multi-stage con targets `api` y `frontend`.
-- Backend: Blueprint `render.yaml` para Render.
-- Frontend: configuración de Sites/Cloudflare.
-- Desarrollo conjunto: `compose.yaml`.
-
-| Variable | Servicio | Uso |
-|---|---|---|
-| `OPENAI_API_KEY` | Backend | Credencial privada; nunca se expone al frontend. |
-| `OPENAI_MODEL` | Backend | Modelo de chat. |
-| `OPENAI_EMBEDDING_MODEL` | Backend | Modelo de embeddings. |
-| `CORS_ORIGINS` | Backend | URLs frontend permitidas, separadas por comas. |
-| `NEXT_PUBLIC_API_URL` | Frontend | URL pública de la API. |
-| `NEXT_PUBLIC_SITE_URL` | Frontend | URL usada en metadatos sociales. |
-
-## Próximos pasos
-
-- Calibrar pesos y umbrales con un conjunto de evaluación mayor.
-- Evaluar si el historial necesita persistencia en servidor cuando existan usuarios.
-- Añadir rate limiting si la API se expone públicamente o aumenta el tráfico.
-- Para colecciones grandes o actualizables, usar Qdrant y una base persistente para metadatos.
+| Escenario posible | Mejora |
+| --- | --- |
+| Hay muchos documentos o cambian con frecuencia | Persistiría documentos, metadatos y vectores para no depender de un índice construido en memoria. |
+| Se necesitan cuentas de usuario | Añadiría autenticación y persistencia de conversaciones y permisos; actualmente el historial solo vive en el navegador. |
+| La API recibe tráfico público significativo | Añadiría rate limiting para evitar abuso y controlar el coste de las llamadas al modelo. |
+| Aumentan mucho el tráfico o los costes | Además de reutilizar los embeddings del documento, estudiaría cachear consultas repetidas y separar el procesamiento de documentos. |
+| Los logs actuales dejan de ser suficientes para diagnosticar problemas | Centralizaría logs y añadiría trazas para seguir una petición completa entre servicios. |
+| Quiero tener más confianza en las métricas del RAG | Separaría claramente los casos usados para calibrar de los usados para validar y ampliaría el conjunto de evaluación con preguntas externas. |
+| La búsqueda falla con nombres concretos de productos, organizaciones, lugares o normas | Añadiría NER para detectar esas entidades y utilizarlas como metadatos o filtros de búsqueda. |
+| Las respuestas requieren relacionar información repartida entre varios documentos | Plantearía una ontología y un grafo para representar entidades y relaciones de forma explícita. |
+| El proyecto crece y el README deja de ser suficiente | Ampliaría la documentación con MkDocs, separando instalación, arquitectura, API y decisiones técnicas en páginas específicas. |

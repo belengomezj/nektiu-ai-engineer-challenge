@@ -5,7 +5,7 @@ import './globals.css';
 export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ??
-      'https://nektibot-rag.nice-hen-2847.chatgpt.site',
+      'https://nektibot-rag.srainvisible.chatgpt.site',
   ),
   title: 'NektiBot · Asistente documental',
   description:

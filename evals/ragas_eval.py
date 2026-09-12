@@ -17,6 +17,7 @@ from ragas.metrics.collections import (
 )
 
 from api.app import get_retriever
+from api.citations import cited_answer
 from api.messages import UNKNOWN_ANSWER
 from api.openai_gateway import create_answer
 
@@ -33,11 +34,15 @@ def collect_samples() -> list[dict]:
     samples = []
     retriever = get_retriever()
     for case in cases:
-        if case["should_abstain"]:
+        if case["should_abstain"] or case["split"] != "validation":
             continue
         results = retriever.search(case["question"])
         contexts = [result.chunk.content for result in results]
-        answer = create_answer(case["question"], contexts) if contexts else UNKNOWN_ANSWER
+        if contexts:
+            raw_answer = create_answer(case["question"], contexts)
+            answer, _ = cited_answer(raw_answer, contexts)
+        else:
+            answer = UNKNOWN_ANSWER
         samples.append(
             {
                 "user_input": case["question"],
@@ -61,30 +66,37 @@ async def evaluate(samples: list[dict]) -> None:
         "context_recall": ContextRecall(llm=llm),
     }
     scores = {name: [] for name in metrics}
+    retrieval_misses = 0
 
     try:
         for sample in samples:
-            values = {
-                "faithfulness": await metrics["faithfulness"].ascore(
-                    user_input=sample["user_input"],
-                    response=sample["response"],
-                    retrieved_contexts=sample["retrieved_contexts"],
-                ),
-                "answer_relevancy": await metrics["answer_relevancy"].ascore(
-                    user_input=sample["user_input"], response=sample["response"]
-                ),
-                "context_precision": await metrics["context_precision"].ascore(
-                    user_input=sample["user_input"],
-                    reference=sample["reference"],
-                    retrieved_contexts=sample["retrieved_contexts"],
-                ),
-                "context_recall": await metrics["context_recall"].ascore(
-                    user_input=sample["user_input"],
-                    reference=sample["reference"],
-                    retrieved_contexts=sample["retrieved_contexts"],
-                ),
-            }
-            numeric = {name: float(result.value) for name, result in values.items()}
+            answer_relevancy = await metrics["answer_relevancy"].ascore(
+                user_input=sample["user_input"], response=sample["response"]
+            )
+            if sample["retrieved_contexts"]:
+                values = {
+                    "faithfulness": await metrics["faithfulness"].ascore(
+                        user_input=sample["user_input"],
+                        response=sample["response"],
+                        retrieved_contexts=sample["retrieved_contexts"],
+                    ),
+                    "context_precision": await metrics["context_precision"].ascore(
+                        user_input=sample["user_input"],
+                        reference=sample["reference"],
+                        retrieved_contexts=sample["retrieved_contexts"],
+                    ),
+                    "context_recall": await metrics["context_recall"].ascore(
+                        user_input=sample["user_input"],
+                        reference=sample["reference"],
+                        retrieved_contexts=sample["retrieved_contexts"],
+                    ),
+                }
+                numeric = {name: float(result.value) for name, result in values.items()}
+            else:
+                retrieval_misses += 1
+                # No factual claim is made, while both retrieval metrics must expose the miss.
+                numeric = {"faithfulness": 1.0, "context_precision": 0.0, "context_recall": 0.0}
+            numeric["answer_relevancy"] = float(answer_relevancy.value)
             for name, value in numeric.items():
                 scores[name].append(value)
             print(f"\n{sample['user_input']}")
@@ -95,6 +107,7 @@ async def evaluate(samples: list[dict]) -> None:
     print("\nAverage")
     for name, values in scores.items():
         print(f"  {name}: {sum(values) / len(values):.2f}")
+    print(f"  retrieval_misses: {retrieval_misses}/{len(samples)}")
 
 
 if __name__ == "__main__":

@@ -29,17 +29,21 @@ def create_embeddings(texts: list[str]) -> list[list[float]]:
 
 
 def _messages(question: str, context: list[str], history: list[dict]) -> list[dict]:
-    formatted_context = "\n\n---\n\n".join(context)
+    formatted_context = "\n\n---\n\n".join(
+        f"[{index}] {text}" for index, text in enumerate(context, start=1)
+    )
     return [
         {
             "role": "system",
             "content": (
-                "Responde únicamente con la información del contexto proporcionado. "
-                "Si el contexto no contiene la respuesta, responde exactamente: "
-                f"{UNKNOWN_ANSWER} "
-                "No uses conocimiento externo. Sé conciso y responde en el idioma "
-                "de la pregunta. El historial solo aclara la conversación: cualquier "
-                "dato de la respuesta también debe aparecer en el contexto actual."
+                "Contesta la pregunta usando exclusivamente hechos presentes en el contexto. "
+                "Comprueba todas las condiciones cuando la consulta reúna varias y conserva "
+                "los límites o matices del documento. Si falta la información necesaria, "
+                f"contesta exactamente «{UNKNOWN_ANSWER}». No completes huecos con conocimiento "
+                "externo. Responde de forma directa, breve y en el idioma de la consulta. "
+                "El historial sirve para entender referencias, pero no aporta hechos nuevos. "
+                "Acaba con una línea FUENTES: [1, 2] que enumere únicamente los fragmentos "
+                "que sostienen la respuesta; usa FUENTES: [] al contestar No lo sé."
             ),
         },
         *history,

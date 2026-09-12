@@ -1,42 +1,252 @@
 [
   {
-    "question": "¿Cuánto cuesta el plan Starter?",
-    "reference": "El plan Starter cuesta 49 € al mes.",
+    "question": "Solo puedo destinar 50 € al mes al asistente. ¿Me alcanza para la opción de entrada?",
+    "reference": "Sí. Starter cuesta 49 € al mes.",
     "expected_source": "Planes y precios",
-    "expected_terms": ["49", "mes"],
+    "expected_terms": ["Starter", "49"],
     "expects_sources": true,
-    "should_abstain": false
+    "should_abstain": false,
+    "split": "calibration",
+    "origin": "original_rephrased"
   },
   {
-    "question": "¿Necesito una tarjeta para probar el producto?",
+    "question": "Antes de enseñarlo al equipo quiero probarlo dos semanas sin dar datos bancarios. ¿Se cumplen ambas condiciones?",
     "reference": "No se requiere tarjeta para los 14 días de prueba gratuita.",
     "expected_source": "Planes y precios",
     "expected_terms": ["no", "tarjeta"],
     "expects_sources": true,
-    "should_abstain": false
+    "should_abstain": false,
+    "split": "validation",
+    "origin": "original_rephrased"
   },
   {
-    "question": "¿Cómo se protegen los datos de los clientes?",
-    "reference": "Los datos de los clientes se cifran en tránsito y en reposo.",
+    "question": "Resume las dos situaciones del ciclo del dato para las que el manual declara cifrado.",
+    "reference": "Los datos se cifran en tránsito y en reposo.",
     "expected_source": "Privacidad y datos",
-    "expected_terms": ["cifran", "tránsito", "reposo"],
+    "expected_terms": ["tránsito", "reposo"],
     "expects_sources": true,
-    "should_abstain": false
+    "should_abstain": false,
+    "split": "calibration",
+    "origin": "original_rephrased"
   },
   {
-    "question": "¿Puede NektiBot enviar correos?",
-    "reference": "No. NektiBot no realiza acciones ni envía correos.",
+    "question": "Un flujo debe mandar la contestación y cambiar la ficha del cliente sin intervención humana. ¿Encaja?",
+    "reference": "No. NektiBot no envía correos ni modifica registros; solo proporciona información.",
     "expected_source": "Límites conocidos",
-    "expected_terms": ["no", "correo"],
+    "expected_terms": ["no", "modifica"],
     "expects_sources": true,
-    "should_abstain": false
+    "should_abstain": false,
+    "split": "validation",
+    "origin": "original_rephrased"
   },
   {
-    "question": "¿Quién ganó el mundial de fútbol de 2010?",
+    "question": "¿El manual recoge quién obtuvo el último premio Nobel de Física?",
     "reference": "No lo sé",
     "expected_source": null,
     "exact_answer": "No lo sé",
     "expects_sources": false,
-    "should_abstain": true
+    "should_abstain": true,
+    "split": "calibration",
+    "origin": "original_rephrased"
+  },
+  {
+    "question": "¿Qué relación describe el manual entre la documentación interna, soporte y las dudas de clientes?",
+    "reference": "Ayuda a equipos de soporte a responder desde la documentación interna.",
+    "expected_source": "Qué es NektiBot",
+    "expected_terms": ["soporte", "documentación"],
+    "expects_sources": true,
+    "should_abstain": false,
+    "split": "calibration",
+    "origin": "sample.md"
+  },
+  {
+    "question": "Trabajo desde la bandeja de entrada, el chat web y Slack. ¿Puedo usar los tres?",
+    "reference": "Sí. Se integra con correo, chat web y Slack.",
+    "expected_source": "Qué es NektiBot",
+    "expected_terms": ["sí", "chat", "Slack"],
+    "expects_sources": true,
+    "should_abstain": false,
+    "split": "validation",
+    "origin": "sample.md"
+  },
+  {
+    "question": "Necesitamos inicio de sesión único y acompañamiento dedicado. ¿Qué modalidad reúne ambos?",
+    "reference": "Enterprise incluye SSO y soporte dedicado.",
+    "expected_source": "Planes y precios",
+    "expected_terms": ["Enterprise", "SSO"],
+    "expects_sources": true,
+    "should_abstain": false,
+    "split": "calibration",
+    "origin": "sample.md"
+  },
+  {
+    "question": "¿Puedo pagar la suscripción una vez al año?",
+    "reference": "No lo sé",
+    "expected_source": null,
+    "exact_answer": "No lo sé",
+    "expects_sources": false,
+    "should_abstain": true,
+    "split": "validation",
+    "origin": "sample.md_absent"
+  },
+  {
+    "question": "¿El nivel inicial admite 2000 consultas en un mes?",
+    "reference": "Sí. Starter incluye 2.000 consultas al mes.",
+    "expected_source": "Planes y precios",
+    "expected_terms": ["2.000", "mes"],
+    "expects_sources": true,
+    "should_abstain": false,
+    "split": "calibration",
+    "origin": "sample.md"
+  },
+  {
+    "question": "Somos cuatro personas atendiendo clientes. ¿Qué modalidad cubre al equipo?",
+    "reference": "Business cubre cuatro personas porque incluye 5 asistentes.",
+    "expected_source": "Planes y precios",
+    "expected_terms": ["Business", "5"],
+    "expects_sources": true,
+    "should_abstain": false,
+    "split": "validation",
+    "origin": "sample.md"
+  },
+  {
+    "question": "Por política interna ningún contenido puede cruzar nuestro perímetro. ¿Qué modalidad y despliegue lo permiten?",
+    "reference": "Enterprise permite desplegar el modelo on-premise para que los datos no salgan de la red.",
+    "expected_source": "Privacidad y datos",
+    "expected_terms": ["Enterprise", "on-premise"],
+    "expects_sources": true,
+    "should_abstain": false,
+    "split": "calibration",
+    "origin": "sample.md"
+  },
+  {
+    "question": "¿Cuántos gigabytes de almacenamiento incluye cada modalidad?",
+    "reference": "No lo sé",
+    "expected_source": null,
+    "exact_answer": "No lo sé",
+    "expects_sources": false,
+    "should_abstain": true,
+    "split": "validation",
+    "origin": "sample.md_absent"
+  },
+  {
+    "question": "Nuestra documentación mezcla PDF y páginas de Notion. ¿Admite ambas?",
+    "reference": "Sí. Puede indexar PDF y bases de conocimiento de Notion.",
+    "expected_source": "Fuentes de datos soportadas",
+    "expected_terms": ["PDF", "Notion"],
+    "expects_sources": true,
+    "should_abstain": false,
+    "split": "calibration",
+    "origin": "sample.md"
+  },
+  {
+    "question": "Una corrección recién publicada no aparece al instante en Starter. ¿Qué espera indica el manual?",
+    "reference": "En Starter la sincronización se realiza cada 24 horas.",
+    "expected_source": "Fuentes de datos soportadas",
+    "expected_terms": ["24", "horas"],
+    "expects_sources": true,
+    "should_abstain": false,
+    "split": "validation",
+    "origin": "sample.md"
+  },
+  {
+    "question": "Elegimos Business porque no podemos esperar al refresco diario. ¿Qué frecuencia ofrece?",
+    "reference": "Business se sincroniza en tiempo real.",
+    "expected_source": "Fuentes de datos soportadas",
+    "expected_terms": ["tiempo real"],
+    "expects_sources": true,
+    "should_abstain": false,
+    "split": "calibration",
+    "origin": "sample.md"
+  },
+  {
+    "question": "¿Qué porcentaje de disponibilidad garantiza el servicio?",
+    "reference": "No lo sé",
+    "expected_source": null,
+    "exact_answer": "No lo sé",
+    "expects_sources": false,
+    "should_abstain": true,
+    "split": "calibration",
+    "origin": "sample.md_absent"
+  },
+  {
+    "question": "¿Qué compromiso explícito asume el producto sobre reutilizar información del cliente para mejorar modelos?",
+    "reference": "No. NektiBot no usa los datos de clientes para entrenar modelos.",
+    "expected_source": "Privacidad y datos",
+    "expected_terms": ["no", "entrenar"],
+    "expects_sources": true,
+    "should_abstain": false,
+    "split": "validation",
+    "origin": "sample.md"
+  },
+  {
+    "question": "Si no contrato Enterprise, ¿sigue habiendo protección para la información almacenada?",
+    "reference": "Sí. Los datos de los clientes se cifran en reposo en todos los planes.",
+    "expected_source": "Privacidad y datos",
+    "expected_terms": ["sí", "reposo"],
+    "expects_sources": true,
+    "should_abstain": false,
+    "split": "calibration",
+    "origin": "sample.md"
+  },
+  {
+    "question": "Si una consulta llega en italiano, ¿qué dos comportamientos lingüísticos deberían ocurrir?",
+    "reference": "Sí. El italiano está soportado y el idioma se ajusta al de la pregunta.",
+    "expected_source": "Idiomas",
+    "expected_terms": ["italiano", "automáticamente"],
+    "expects_sources": true,
+    "should_abstain": false,
+    "split": "validation",
+    "origin": "sample.md"
+  },
+  {
+    "question": "Además de contestar, necesito que una incidencia cambie de estado sola. ¿Dónde está el límite?",
+    "reference": "NektiBot solo responde con información y no modifica registros ni realiza acciones.",
+    "expected_source": "Límites conocidos",
+    "expected_terms": ["no", "modifica"],
+    "expects_sources": true,
+    "should_abstain": false,
+    "split": "calibration",
+    "origin": "sample.md"
+  },
+  {
+    "question": "La hoja de ruta menciona voz. ¿Eso permite abrir hoy un canal telefónico?",
+    "reference": "No. Teléfono y voz están en la hoja de ruta, pero aún no disponibles.",
+    "expected_source": "Límites conocidos",
+    "expected_terms": ["no", "hoja de ruta"],
+    "expects_sources": true,
+    "should_abstain": false,
+    "split": "validation",
+    "origin": "sample.md"
+  },
+  {
+    "question": "Si escribo al chat un martes a las 17:30 CET, ¿estará abierto?",
+    "reference": "Sí. El chat funciona de lunes a viernes de 9:00 a 18:00 CET.",
+    "expected_source": "Contacto de soporte",
+    "expected_terms": ["sí", "martes"],
+    "expects_sources": true,
+    "should_abstain": false,
+    "split": "calibration",
+    "origin": "sample.md"
+  },
+  {
+    "question": "El chat no me sirve y quiero dejar un mensaje escrito al equipo de ayuda. ¿Qué dato ofrece el manual?",
+    "reference": "La dirección es soporte@nektibot.example.",
+    "expected_source": "Contacto de soporte",
+    "expected_terms": ["soporte@nektibot.example"],
+    "expects_sources": true,
+    "should_abstain": false,
+    "split": "validation",
+    "origin": "sample.md"
+  },
+  {
+    "question": "¿Qué pasos tengo que seguir para cancelar mi cuenta?",
+    "reference": "No lo sé",
+    "expected_source": null,
+    "exact_answer": "No lo sé",
+    "expects_sources": false,
+    "should_abstain": true,
+    "split": "validation",
+    "origin": "sample.md_absent"
   }
 ]

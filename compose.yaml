@@ -6,7 +6,7 @@ services:
     env_file:
       - api/.env
     environment:
-      CORS_ORIGINS: http://localhost:3000
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:3000}"
     ports:
       - "${API_PORT:-8000}:8000"
     healthcheck:

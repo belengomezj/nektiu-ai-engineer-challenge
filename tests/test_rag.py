@@ -15,6 +15,14 @@ def test_tokenize_normalizes_accents_and_removes_stop_words() -> None:
     assert tokenize("¿Cuál es el precio de la suscripción?") == ["precio", "suscripcion"]
 
 
+def test_tokenize_normalizes_thousands_separator() -> None:
+    assert tokenize("5.000 consultas") == tokenize("5000 consultas")
+
+
+def test_tokenize_preserves_decimal_points() -> None:
+    assert tokenize("umbral 0.35") == ["umbral", "0.35"]
+
+
 def test_bm25_ranks_exact_terms_first() -> None:
     index = BM25Index(["Planes y precios Starter", "Privacidad y cifrado de datos"])
 
@@ -48,3 +56,22 @@ def test_hybrid_retriever_rejects_unrelated_question() -> None:
     retriever = HybridRetriever(chunks, lambda texts: [embeddings[text] for text in texts])
 
     assert retriever.search("¿Quién ganó el mundial?") == []
+
+
+def test_hybrid_retriever_validates_lexical_weight() -> None:
+    chunk = Chunk("Planes", "Starter cuesta 49 euros.")
+
+    with np.testing.assert_raises(ValueError):
+        HybridRetriever([chunk], lambda texts: [[1.0]] * len(texts), lexical_weight=1.1)
+
+
+def test_hybrid_retriever_validates_result_selection() -> None:
+    chunk = Chunk("Planes", "Starter cuesta 49 euros.")
+
+    def embed(texts: list[str]) -> list[list[float]]:
+        return [[1.0]] * len(texts)
+
+    with np.testing.assert_raises(ValueError):
+        HybridRetriever([chunk], embed, result_ratio=0)
+    with np.testing.assert_raises(ValueError):
+        HybridRetriever([chunk], embed, result_limit=0)

@@ -21,17 +21,17 @@
 }
 
 :root {
-  --background: #f4f1e9;
-  --foreground: #17211e;
-  --primary: #173f36;
-  --primary-foreground: #f9fbf7;
-  --muted: #e9ede8;
-  --muted-foreground: #64716c;
-  --border: #d9ddd7;
-  --input: #d4d9d3;
-  --ring: #4d7d70;
-  --destructive: #b33a32;
-  --radius: 0.75rem;
+  --background: #f7f9fc;
+  --foreground: #172033;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --muted: #edf3ff;
+  --muted-foreground: #64748b;
+  --border: #dbe4f0;
+  --input: #cbd8ea;
+  --ring: #3b82f6;
+  --destructive: #c2414b;
+  --radius: 0.9rem;
 }
 
 * {
@@ -65,36 +65,35 @@ textarea {
 .app-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
-  background:
-    radial-gradient(circle at 0 0, rgba(236, 210, 139, 0.2), transparent 30%),
-    var(--background);
+  grid-template-columns: minmax(240px, 285px) minmax(0, 1fr);
+  background: var(--background);
 }
 
 .context-panel {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 2rem;
-  padding: clamp(2rem, 5vw, 4.5rem) clamp(1.5rem, 3vw, 3.25rem);
-  border-right: 1px solid rgba(23, 63, 54, 0.14);
+  gap: 1.5rem;
+  padding: 2rem 1.5rem;
+  border-right: 1px solid var(--border);
+  background: #edf4ff;
 }
 
 .brand-mark {
-  width: 46px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
-  margin-bottom: 2.25rem;
-  border-radius: 14px;
-  color: #f7f3e8;
+  margin-bottom: 1.5rem;
+  border-radius: 12px;
+  color: #ffffff;
   background: var(--primary);
-  box-shadow: 0 12px 30px rgba(23, 63, 54, 0.18);
+  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.2);
 }
 
 .eyebrow {
   margin: 0 0 0.55rem;
-  color: #60706a;
+  color: #64748b;
   font-size: 0.7rem;
   font-weight: 750;
   letter-spacing: 0.12em;
@@ -108,19 +107,18 @@ p {
 }
 
 h1 {
-  margin-bottom: 1rem;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(2.8rem, 5vw, 4.7rem);
-  font-weight: 500;
-  letter-spacing: -0.055em;
-  line-height: 0.95;
+  margin-bottom: 0.8rem;
+  font-size: 2rem;
+  font-weight: 680;
+  letter-spacing: -0.04em;
+  line-height: 1;
 }
 
 .context-copy {
   max-width: 28rem;
-  color: #5c6863;
-  font-size: 0.98rem;
-  line-height: 1.65;
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.6;
 }
 
 .document-card {
@@ -129,9 +127,9 @@ h1 {
   align-items: center;
   gap: 0.85rem;
   padding: 1rem;
-  border: 1px solid rgba(23, 63, 54, 0.14);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.48);
+  border: 1px solid #d6e3f7;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .document-card div {
@@ -139,21 +137,21 @@ h1 {
   gap: 0.18rem;
 }
 .document-card span {
-  color: #68736f;
+  color: #718096;
   font-size: 0.72rem;
 }
 .document-card strong {
   font-size: 0.86rem;
 }
 .document-check {
-  color: #357a62;
+  color: #2563eb;
 }
 
 .trust-note {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-  color: #63706b;
+  color: #64748b;
   font-size: 0.78rem;
   line-height: 1.55;
 }
@@ -166,29 +164,30 @@ h1 {
   height: 8px;
   margin-top: 0.35rem;
   border-radius: 50%;
-  background: #3c9a72;
+  background: #3b82f6;
 }
 
 .chat-panel {
   min-height: 100vh;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  background: #fffefa;
+  background: #ffffff;
 }
 
 .chat-header {
-  min-height: 94px;
+  min-height: 76px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1.35rem clamp(1.25rem, 5vw, 4.5rem);
-  border-bottom: 1px solid #e6e5df;
+  padding: 1rem clamp(1.25rem, 4vw, 3rem);
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.94);
 }
 
 .chat-header h2 {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   letter-spacing: -0.025em;
 }
 .chat-header .eyebrow {
@@ -205,7 +204,7 @@ h1 {
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  color: #64716c;
+  color: #64748b;
   font-size: 0.75rem;
 }
 
@@ -213,13 +212,13 @@ h1 {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #3c9a72;
+  background: #3b82f6;
 }
 
 .messages {
-  width: min(780px, 100%);
+  width: min(760px, 100%);
   margin: 0 auto;
-  padding: clamp(2rem, 6vh, 4.5rem) clamp(1.25rem, 5vw, 3rem) 2rem;
+  padding: clamp(2rem, 6vh, 4rem) clamp(1.25rem, 5vw, 3rem) 2rem;
   overflow-y: auto;
 }
 
@@ -227,7 +226,7 @@ h1 {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  margin-bottom: 2rem;
+  margin-bottom: 2.25rem;
 }
 .message-user {
   align-items: flex-end;
@@ -235,7 +234,7 @@ h1 {
 
 .message-author {
   margin: 0 0.75rem 0.45rem;
-  color: #78817d;
+  color: #72809a;
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.07em;
@@ -245,18 +244,18 @@ h1 {
 .message-bubble {
   max-width: min(620px, 88%);
   padding: 0.9rem 1.05rem;
-  border: 1px solid #e2e4df;
-  border-radius: 7px 18px 18px 18px;
-  background: #f2f4ef;
+  border: 1px solid #e2e9f4;
+  border-radius: 8px 18px 18px 18px;
+  background: #f5f8fd;
   line-height: 1.62;
-  box-shadow: 0 6px 22px rgba(27, 43, 38, 0.04);
+  box-shadow: none;
 }
 
 .message-user .message-bubble {
-  color: #f9fbf7;
-  border-color: var(--primary);
+  color: #17315f;
+  border-color: #ccdcf7;
   border-radius: 18px 7px 18px 18px;
-  background: var(--primary);
+  background: #e7f0ff;
 }
 
 .message-bubble p {
@@ -275,7 +274,7 @@ h1 {
   gap: 0.45rem;
   padding: 0.35rem 0.6rem;
   border: 0;
-  color: #60716a;
+  color: #4169a8;
   background: transparent;
   font-size: 0.75rem;
   font-weight: 650;
@@ -295,9 +294,9 @@ h1 {
 .sources-content blockquote {
   margin: 0;
   padding: 0.85rem 1rem;
-  border-left: 3px solid #b9cbbf;
+  border-left: 3px solid #8fb5f2;
   border-radius: 0 10px 10px 0;
-  background: #f7f7f3;
+  background: #f5f8fd;
 }
 .sources-content strong {
   display: block;
@@ -306,7 +305,7 @@ h1 {
 }
 .sources-content p {
   margin: 0;
-  color: #66716c;
+  color: #5f6f86;
   font-size: 0.72rem;
   line-height: 1.55;
 }
@@ -321,7 +320,7 @@ h1 {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #6d7c76;
+  background: #4f7fd0;
   animation: pulse 1s infinite alternate;
 }
 .thinking > span:nth-child(2) {
@@ -341,29 +340,33 @@ h1 {
   width: min(820px, 100%);
   margin: 0 auto;
   padding: 0 clamp(1.25rem, 5vw, 3rem) 1.5rem;
+  background: linear-gradient(to top, #ffffff 75%, rgba(255, 255, 255, 0));
 }
 
 .suggestions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.8rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
+  margin-bottom: 1rem;
 }
 .suggestions button {
-  padding: 0.48rem 0.75rem;
-  border: 1px solid #dfe3dd;
-  border-radius: 999px;
-  color: #596761;
-  background: #fafbf7;
-  font-size: 0.72rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #d8e3f3;
+  border-radius: 14px;
+  color: #4f6078;
+  background: #ffffff;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  text-align: left;
   cursor: pointer;
   transition:
     border-color 150ms ease,
     color 150ms ease;
 }
 .suggestions button:hover {
-  border-color: #8baa9e;
-  color: #173f36;
+  border-color: #8fb5f2;
+  color: #1d4f9c;
+  background: #f7faff;
 }
 
 .composer {
@@ -372,10 +375,10 @@ h1 {
   align-items: end;
   gap: 0.65rem;
   padding: 0.65rem;
-  border: 1px solid #d8ddd6;
-  border-radius: 18px;
+  border: 1px solid #cfdced;
+  border-radius: 22px;
   background: #fff;
-  box-shadow: 0 14px 45px rgba(36, 52, 47, 0.09);
+  box-shadow: 0 12px 34px rgba(41, 75, 128, 0.11);
 }
 
 .composer textarea {
@@ -392,12 +395,12 @@ h1 {
 .composer button {
   width: 42px;
   height: 42px;
-  border-radius: 13px;
+  border-radius: 15px;
 }
 .composer-hint {
   margin: 0.55rem 0 0;
   text-align: center;
-  color: #929a96;
+  color: #8a97aa;
   font-size: 0.66rem;
 }
 .error-message {
@@ -425,7 +428,7 @@ h1 {
     min-height: auto;
     padding: 1.2rem 1.25rem;
     border-right: 0;
-    border-bottom: 1px solid rgba(23, 63, 54, 0.14);
+    border-bottom: 1px solid var(--border);
   }
   .context-panel > div:first-child {
     display: flex;
@@ -465,6 +468,9 @@ h1 {
   .sources {
     max-width: 94%;
     width: auto;
+  }
+  .suggestions {
+    grid-template-columns: 1fr;
   }
 }
 
