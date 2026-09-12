@@ -9,8 +9,31 @@ services:
       - key: OPENAI_API_KEY
         sync: false
       - key: CORS_ORIGINS
-        sync: false
+        fromService:
+          name: nektibot-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
       - key: OPENAI_MODEL
         value: gpt-4.1-mini
       - key: OPENAI_EMBEDDING_MODEL
         value: text-embedding-3-small
+
+  - type: web
+    name: nektibot-web
+    runtime: node
+    plan: free
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: nektibot-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: NEXT_PUBLIC_SITE_URL
+        fromService:
+          name: nektibot-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL

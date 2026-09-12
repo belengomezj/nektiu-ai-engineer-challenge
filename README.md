@@ -1,6 +1,6 @@
 # NektiBot — asistente RAG
 
-**Aplicación:** https://nektibot-rag.srainvisible.chatgpt.site
+**Aplicación pública:** pendiente de activar el Blueprint de Render.
 
 ## Instalación
 
@@ -49,6 +49,24 @@ docker compose up --build
 - Frontend: `http://localhost:3000`
 - API: `http://localhost:8000`
 
+### Despliegue en Render
+
+[`render.yaml`](render.yaml) crea dos servicios públicos e independientes:
+
+| Servicio | Runtime | URL |
+|---|---|---|
+| `nektibot-web` | Node | Se añadirá después de comprobar el despliegue. |
+| `nektibot-api` | Docker/FastAPI | Se añadirá después de comprobar el despliegue. |
+
+1. Crea un Blueprint de Render desde este repositorio y la rama `main`.
+2. Introduce `OPENAI_API_KEY` como secreto y pulsa **Deploy Blueprint**.
+3. Render conecta automáticamente la URL de la API con el frontend y configura CORS con el origen
+   real del frontend.
+
+Los dos servicios usan el plan gratuito. Es suficiente para esta prueba, pero los servicios web se
+duermen tras un periodo sin tráfico, pueden tardar alrededor de un minuto en arrancar y comparten
+las horas gratuitas del workspace. El uso de la API de OpenAI se factura por separado.
+
 ### Comprobaciones
 
 ```bash
@@ -71,6 +89,7 @@ npm run build
 | `uv`, `pyproject.toml` y `uv.lock` | Instalación reproducible y una única definición de dependencias. |
 | Backend y frontend separados | Cada servicio puede desarrollarse y desplegarse de forma independiente. |
 | Un Dockerfile multi-stage | Evita duplicar configuración y genera imágenes específicas para cada servicio. |
+| Dos servicios en Render | Mantiene esa separación también en producción y evita exponer la clave de OpenAI en el navegador. |
 | CI con Ruff, formato y pytest | Cubre las comprobaciones esenciales. |
 | Ragas como herramienta opcional | La evaluación usa red y modelos, por lo que no forma parte de la aplicación ni del CI. |
 
