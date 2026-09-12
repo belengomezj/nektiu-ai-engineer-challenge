@@ -1,6 +1,6 @@
 # NektiBot — asistente RAG
 
-**Aplicación pública:** pendiente de activar el Blueprint de Render.
+**Aplicación pública:** https://nektibot-web.onrender.com/
 
 ## Instalación
 
@@ -55,8 +55,8 @@ docker compose up --build
 
 | Servicio | Runtime | URL |
 |---|---|---|
-| `nektibot-web` | Node | Se añadirá después de comprobar el despliegue. |
-| `nektibot-api` | Docker/FastAPI | Se añadirá después de comprobar el despliegue. |
+| `nektibot-web` | Node | https://nektibot-web.onrender.com/ |
+| `nektibot-api` | Docker/FastAPI | https://nektibot-api.onrender.com/ |
 
 1. Crea un Blueprint de Render desde este repositorio y la rama `main`.
 2. Introduce `OPENAI_API_KEY` como secreto y pulsa **Deploy Blueprint**.
